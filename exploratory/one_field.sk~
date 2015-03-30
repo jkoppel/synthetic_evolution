@@ -1,0 +1,27 @@
+int[10] write1(int[1] data) {
+  int[10] result;
+
+  result[0] = data[0];
+
+  return result;
+}
+
+generator int readExp(int[10] file) {
+  return file[??];
+}
+
+int[1] read1(int[10] file) {
+  int[1] result;
+
+  result[0] = readExp(file);
+
+  return result;
+}
+
+harness void main(int[1] data) {
+  int[1] roundTrip =  read1(write1(data));
+
+  for (int i = 0; i < 1; i++) {
+    assert roundTrip[i] == data[i];
+  }
+}

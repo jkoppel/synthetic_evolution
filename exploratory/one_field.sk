@@ -1,0 +1,53 @@
+int dataSize = 2;
+int fileSize = 10;
+
+
+void write1(int[dataSize] data, ref int[fileSize] buf) {
+    buf[0] = 0;
+    buf[1] = data[0];
+}
+
+void write2(int[dataSize] data, ref int[fileSize] buf) {
+  buf[0] = 1;
+  buf[1] = data[0];
+  buf[2] = data[1];
+}
+
+generator int readExp(int[fileSize] file) {
+    if (??) {
+        return file[??];
+    } else {
+        if (file[??] == ??) {
+            return file[??];
+        } else {
+            return ??;
+        }
+    }
+}
+
+int[dataSize] read(int[fileSize] file) {
+  int[dataSize] result;
+
+  result[0] = readExp(file);
+  result[1] = readExp(file);
+
+  return result;
+}
+
+void check(int[dataSize] in, int[dataSize] out, int upto) {
+  for (int i = 0; i < dataSize; i++) {
+    if (i < upto) {
+        assert out[i] == in[i];
+    } else {
+        assert out[i] == 0;
+    }
+  }    
+}
+
+harness void main(int[dataSize] data, int[fileSize] buf1, int[fileSize] buf2) {
+    write1(data, buf1);
+    check(data, read(buf1), 1);
+    
+    write2(data, buf2);
+    check(data, read(buf2), 2);
+}
