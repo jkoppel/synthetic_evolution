@@ -34,14 +34,14 @@ void write_2(DataStruct_2 s, ref int length, ref int[fileSize] buf) {
     length = 4;
 }
 
-void write_3(DataStruct_1 s, ref int length, ref int[fileSize] buf) {
+void write_3(DataStruct_3 s, ref int length, ref int[fileSize] buf) {
     buf[0] = 1;
     buf[1] = s.field1;
     buf[2] = 2;
     buf[3] = s.field2;
     buf[4] = 3;
     buf[5] = s.field3;
-    length = 4;
+    length = 6;
 }
 
 void write_4(DataStruct_4 s, ref int length, ref int[fileSize] buf) {
@@ -55,13 +55,13 @@ void write_4(DataStruct_4 s, ref int length, ref int[fileSize] buf) {
 
 void check_1(DataStruct_1 in, DataStruct_4 out) {
     assert in.field1  == out.field1;
-    assert out.field3 == 0;
+    assert out.field3 == -1;
 }
 
 
 void check_2(DataStruct_2 in, DataStruct_4 out) {
     assert in.field1  == out.field1;
-    assert out.field3 == 0;
+    assert out.field3 == -1;
 }
 
 
@@ -75,11 +75,70 @@ void check_4(DataStruct_4 in, DataStruct_4 out) {
     assert in.field3 == out.field3;
 }
 
+int totalCost = 0;
 
-harness void main(DataStruct_1 in1, int[fileSize] buf1,
-                  DataStruct_2 in2, int[fileSize] buf2,
-                  DataStruct_3 in3, int[fileSize] buf3,
-                  DataStruct_4 in4, int[fileSize] buf4) {
+generator bit check(int[fileSize] buf, int length, int depth) {
+    assert depth > 0;
+    
+    int t = ??;
 
-    check_1(write_1(
+    if (t == 0) {
+        return true;
+    } else if (t == 1) {
+        totalCost += 1;
+        return buf[??] == ??;
+    } else if(t == 2) {
+        totalCost += 1;
+        return {| length (< | == | >) ?? |};
+    } else {
+        return check(buf, length, depth-1) && check(buf, length, depth-1);
+    }
+}
+
+generator int readExp(int[fileSize] buf, int length, int depth) {
+    if (?? || depth == 0) {
+        return -1;
+    }
+    
+    if (check(buf, length, 2)) {
+        return buf[??];
+    } else {
+        return readExp(buf, length, depth-1);
+    }
+}
+
+DataStruct_4 read(int[fileSize] buf, int length) {
+    DataStruct_4 result = new DataStruct_4();
+
+    result.field1 = readExp(buf, length, 2);
+    result.field3 = readExp(buf, length, 2);
+    
+    return result;
+}
+
+
+harness void main(int field1, int field2, int field3,
+                  int[fileSize] buf1, int[fileSize] buf2, int[fileSize] buf3, int[fileSize] buf4) {
+
+    int length;
+
+    DataStruct_1 in1 = new DataStruct_1(field1=field1);
+    DataStruct_2 in2 = new DataStruct_2(field1=field1, field2=field2);
+    DataStruct_3 in3 = new DataStruct_3(field1=field1, field2=field2, field3=field3);
+    DataStruct_4 in4 = new DataStruct_4(field1=field1, field3=field3);
+    
+    write_1(in1, length, buf1);
+    check_1(in1, read(buf1, length));
+    
+    write_2(in2, length, buf2);
+    check_2(in2, read(buf2, length));
+    
+    write_3(in3, length, buf3);
+    check_3(in3, read(buf3, length));
+    
+    write_4(in4, length, buf4);
+    check_4(in4, read(buf4, length));
+    
+
+    minimize(totalCost);
 }
