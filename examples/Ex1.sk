@@ -1,0 +1,85 @@
+struct DataStruct_1 {
+    int field1;
+}
+
+struct DataStruct_2 {
+    int field1;
+    int field2;
+}
+
+struct DataStruct_3 {
+    int field1;
+    int field2;
+    int field3;
+}
+
+struct DataStruct_4 {
+  int field1;
+  int field3;
+}
+
+int fileSize = 6;
+
+void write_1(DataStruct_1 s, ref int length, ref int[fileSize] buf) {
+    buf[0] = 1;
+    buf[1] = s.field1;
+    length = 2;
+}
+
+void write_2(DataStruct_2 s, ref int length, ref int[fileSize] buf) {
+    buf[0] = 1;
+    buf[1] = s.field1;
+    buf[2] = 2;
+    buf[3] = s.field2;
+    length = 4;
+}
+
+void write_3(DataStruct_1 s, ref int length, ref int[fileSize] buf) {
+    buf[0] = 1;
+    buf[1] = s.field1;
+    buf[2] = 2;
+    buf[3] = s.field2;
+    buf[4] = 3;
+    buf[5] = s.field3;
+    length = 4;
+}
+
+void write_4(DataStruct_4 s, ref int length, ref int[fileSize] buf) {
+    buf[0] = 1;
+    buf[1] = s.field1;
+    buf[2] = 3;
+    buf[3] = s.field3;
+    length = 4;
+}
+
+
+void check_1(DataStruct_1 in, DataStruct_4 out) {
+    assert in.field1  == out.field1;
+    assert out.field3 == 0;
+}
+
+
+void check_2(DataStruct_2 in, DataStruct_4 out) {
+    assert in.field1  == out.field1;
+    assert out.field3 == 0;
+}
+
+
+void check_3(DataStruct_3 in, DataStruct_4 out) {
+    assert in.field1  == out.field1;
+    assert in.field3 == out.field3;
+}
+
+void check_4(DataStruct_4 in, DataStruct_4 out) {
+    assert in.field1 == out.field1;
+    assert in.field3 == out.field3;
+}
+
+
+harness void main(DataStruct_1 in1, int[fileSize] buf1,
+                  DataStruct_2 in2, int[fileSize] buf2,
+                  DataStruct_3 in3, int[fileSize] buf3,
+                  DataStruct_4 in4, int[fileSize] buf4) {
+
+    check_1(write_1(
+}
