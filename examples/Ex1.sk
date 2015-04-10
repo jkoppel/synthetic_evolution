@@ -91,7 +91,8 @@ generator bit check(int[fileSize] buf, int length, int depth) {
         totalCost += 1;
         return {| length (< | == | >) ?? |};
     } else {
-        return check(buf, length, depth-1) && check(buf, length, depth-1);
+        bit IUsedAnAnd = check(buf, length, depth-1) && check(buf, length, depth-1);
+        return IUsedAnAnd;
     }
 }
 
