@@ -22,7 +22,7 @@ public DataStruct read(int[] in) {
     } else if (in.length > 4 && in[4] == 3) {
         result.field3 = in[5];
     } else {
-        result.field3 = 0;
+        result.field3 = -1;
     }
 
     return result;
