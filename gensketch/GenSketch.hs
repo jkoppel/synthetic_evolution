@@ -156,8 +156,11 @@ formatToReader (index, format) = block readerHeader readerBody
           dataStructVariable index <+> "result = new" <+> dataStructVariable index <>
           "();" $$ vcat (map readerBodyResult format) $$ "return result;"
 
+readExpDepth :: Doc
+readExpDepth = int 3
+
 readerBodyResult :: (Field, RenderStrategy) -> Doc
-readerBodyResult (IntField fieldName, _) = "result.field" <> (int fieldName) <+> "= readExp(buf, length, 2);"
+readerBodyResult (IntField fieldName, _) = "result.field" <> (int fieldName) <+> "= readExp(buf, length, "<> readExpDepth <>");"
 
 
 -- Harness void main()
