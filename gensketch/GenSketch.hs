@@ -73,30 +73,26 @@ genWriters :: [(Integer, Format)] -> Doc
 genWriters formats =
   vcat $ map formatToWriter formats
 
+
 formatToWriter :: (Integer, Format) -> Doc
 formatToWriter (index, format) =
   block ("void" <+> "write_" <> integer index
            <> argslist [ dataStructVariable index <+> "s"
                        , "ref int length"
                        , "ref int[fileSize] buf" ])
-        writerStatements
-  where writerStatements :: Doc
-        writerStatements =
-          vcat $ map genBufDecls (zip [0..] format)
-                 ++ ["length = " <> int (2 * length format) <> semi]
-        genBufDecls :: (Integer, (Field, RenderStrategy)) -> Doc
-        genBufDecls (fieldIndex, (IntField fieldName, _)) =
-          vcat [ "buf[" <> integer (2*fieldIndex) <> "] =" <+> int fieldName <> semi
-               , "buf[" <> integer (2*fieldIndex+1) <> "] = s.field" <> int fieldName <> semi
-               ]
+        (vcat $ genBufDecls 0 format)
+  where genBufDecls :: Integer -> [(Field, RenderStrategy)] -> [Doc]
+        genBufDecls index ((field, AttributeCode renderStrategy) : tailFormats) =
+          ["buf[" <> integer index <> "] =" <+> renderField field <> semi]
+          ++ genBufDecls (index+1) ((field, renderStrategy) : tailFormats)
+        genBufDecls index ((IntField fieldName, Raw) : tailFormats) =
+          ["buf[" <> integer index <> "] = s." <> fieldAttribute (IntField fieldName, Raw) <> semi]
+          ++ genBufDecls (index+1) tailFormats
+        genBufDecls index [] =
+          ["length = " <> integer index <> semi]
 
-          -- Note: length will equal the length of the format, times 2
-
-          -- buf[0] = 1;
-          -- buf[1] = s.field1;
-          -- buf[2] = 3;
-          -- buf[3] = s.field3;
-          -- length = 4;
+renderField :: Field -> Doc
+renderField (IntField fieldName) = int fieldName
 
 
 -- Checker functions
@@ -203,9 +199,9 @@ genHarnessMainBody formats =
        ]
 
 genMainStructDecls :: [(Integer, Format)] -> Doc
---     DataStruct_2 in2 = new DataStruct_2(field1=field1_2, field2=field2_2);
 genMainStructDecls formats =
   vcat $ map genMainStructDecl formats
+-- DataStruct_2 in2 = new DataStruct_2(field1=field1_2, field2=field2_2);
 
 genMainStructDecl :: (Integer, Format) -> Doc
 genMainStructDecl (index, format) =
