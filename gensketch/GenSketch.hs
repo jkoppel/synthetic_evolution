@@ -87,7 +87,7 @@ formatToWriter (index, format) =
         genBufDecls :: (Integer, (Field, RenderStrategy)) -> Doc
         genBufDecls (fieldIndex, (IntField fieldName, _)) =
           vcat [ "buf[" <> integer (2*fieldIndex) <> "] =" <+> int fieldName <> semi
-               , "buf[" <> integer (2*fieldIndex+1) <> "] = s.field" <> int fieldName
+               , "buf[" <> integer (2*fieldIndex+1) <> "] = s.field" <> int fieldName <> semi
                ]
 
           -- Note: length will equal the length of the format, times 2
@@ -136,14 +136,14 @@ totalCostDeclaration = "int totalCost = 0;"
 
 generatorCheck :: Doc
 generatorCheck =
-  "generator bit check() {} //TODO, but it's static content"
+  "generator bit check(int[fileSize] buf, int length, int depth) {\n    assert depth > 0;\n    \n    int t = ??;\n\n    if (t == 0) {\n        return true;\n    } else if (t == 1) {\n        totalCost += 1;\n        return buf[??] == ??;\n    } else if(t == 2) {\n        totalCost += 1;\n        return {| length (< | == | >) ?? |};\n    } else {\n        bit IUsedAnAnd = check(buf, length, depth-1) && check(buf, length, depth-1);\n        return IUsedAnAnd;\n    }\n}"
 
 
 -- Generator int readExp()
 
 generatorReadExp :: Doc
 generatorReadExp =
-  "generator int readExp() {} //TODO, but it's static content"
+  "generator int readExp(int[fileSize] buf, int length, int depth) {\n    if (?? || depth == 0) {\n        return -1;\n    }\n    \n    if (check(buf, length, 2)) {\n        return buf[??];\n    } else {\n        return readExp(buf, length, depth-1);\n    }\n}"
 
 
 -- Read function -- only need the lastmost format's read function!
@@ -224,17 +224,17 @@ structDeclArg index (IntField fieldName, _) =
   "_" <> integer index
 
 genMainWriteChecks :: [(Integer, Format)] -> Doc
---     write_1(in1, length, buf1);
---     check_1(in1, read(buf1, length));
 genMainWriteChecks formats =
   vcat $ map genMainWriteCheck formats
+--     write_1(in1, length, buf1);
+--     check_1(in1, read(buf1, length));
 
 genMainWriteCheck :: (Integer, Format) -> Doc
 genMainWriteCheck (index, _) =
   vcat [ "write_" <> integer index <> argslist
-                    ["in1","length", "buf1"] <> semi
+                    ["in" <> integer index,"length", "buf" <> integer index] <> semi
        , "check_" <> integer index <> argslist
-                    ["in1", "read" <> argslist ["buf1", "length"]]
+                    ["in" <> integer index, "read" <> argslist ["buf" <> integer index, "length"]]
                     <> semi
        ]
 
