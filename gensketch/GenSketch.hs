@@ -3,6 +3,15 @@
 import Data.SketchFileFormat.Format
 import Text.PrettyPrint
 
+-- data Struct = Struct
+-- data ReadFunc = ReadFunc
+
+-- class GenSketch t where
+--  gen :: t -> [(Integer, Format)] -> Doc
+
+-- instance GenSketch Struct where
+--  gen _ formats = vcat $ map formatToStruct formats
+
 main :: IO ()
 main = do
   x <- fmap lines getContents
@@ -11,44 +20,42 @@ main = do
 formatsToSketch :: [Format] -> Doc
 formatsToSketch formats =
   let zipformats = zip [1..] formats in
-  vcat [ formatsToStructs zipformats
-       , formatsToFileSizeDecl formats
-       , formatsToWriters zipformats
-       , formatsToCheckers zipformats
+  vcat [ genStructs zipformats
+       , genFileSizeDecl formats
+       , genWriters zipformats
+       , genCheckers zipformats
        , totalCostDeclaration
        , generatorCheck
        , generatorReadExp
        , formatToReader (last zipformats)
-       , formatsToHarnessMain formats 
+       , genHarnessMain zipformats
        ]
 
 
 -- Struct declarations
 
-type StructDeclaration = Doc
-
-formatsToStructs :: [(Integer, Format)] -> Doc
-formatsToStructs formats =
+genStructs :: [(Integer, Format)] -> Doc
+genStructs formats =
   vcat $ map formatToStruct formats
 
-formatToStruct :: (Integer, Format) -> StructDeclaration
+formatToStruct :: (Integer, Format) -> Doc
 formatToStruct (index, format) =
   block
-    (text "struct" <+> text "DataStruct_" <> integer index)
+    ("struct" <+> dataStructVariable index)
     (vcat $ map (fieldToStructDecl . fst) format)
 
 fieldToStructDecl :: Field -> Doc
 fieldToStructDecl (IntField fieldName) =
-  text "int" <+> text "field" <> int fieldName <> semi
+  "int" <+> "field" <> int fieldName <> semi
 
 
 -- File size declaration
 
 type FileSizeDeclaration = Doc
 
-formatsToFileSizeDecl :: [Format] -> FileSizeDeclaration
-formatsToFileSizeDecl formats =
-  text "int" <+> text "fileSize" <+> equals <+>
+genFileSizeDecl :: [Format] -> FileSizeDeclaration
+genFileSizeDecl formats =
+  "int" <+> "fileSize" <+> equals <+>
   integer (fileSize formats) <> semi
 
 fileSize :: [Format] -> Integer
@@ -62,47 +69,67 @@ fieldSize (IntField _, Raw) = 2
 
 -- Writer functions
 
-type WriterDeclaration = Doc
-
-formatsToWriters :: [(Integer, Format)] -> Doc
-formatsToWriters formats =
+genWriters :: [(Integer, Format)] -> Doc
+genWriters formats =
   vcat $ map formatToWriter formats
 
-formatToWriter :: (Integer, Format) -> WriterDeclaration
-formatToWriter format =
-  "todo"
+formatToWriter :: (Integer, Format) -> Doc
+formatToWriter (index, format) =
+  block ("void" <+> "write_" <> integer index
+           <> argslist [ dataStructVariable index <+> "s"
+                       , "ref int length"
+                       , "ref int[fileSize] buf" ])
+        writerStatements
+  where writerStatements :: Doc
+        writerStatements =
+          vcat $ map genBufDecls (zip [0..] format)
+                 ++ ["length = " <> int (2 * length format) <> semi]
+        genBufDecls :: (Integer, (Field, RenderStrategy)) -> Doc
+        genBufDecls (fieldIndex, (IntField fieldName, _)) =
+          vcat [ "buf[" <> integer (2*fieldIndex) <> "] =" <+> int fieldName <> semi
+               , "buf[" <> integer (2*fieldIndex+1) <> "] = s.field" <> int fieldName
+               ]
 
--- void write_i(DataStruct_i s, ref int length, ref int[fileSize] buf) {
-    -- buf[0] = 1;
-    -- buf[1] = s.field1;
-    -- buf[2] = 3;
-    -- buf[3] = s.field3;
-    -- length = 4;
--- }
+          -- Note: length will equal the length of the format, times 2
+
+          -- buf[0] = 1;
+          -- buf[1] = s.field1;
+          -- buf[2] = 3;
+          -- buf[3] = s.field3;
+          -- length = 4;
 
 
 -- Checker functions
 
-type CheckerDeclaration = Doc
-
-formatsToCheckers :: [(Integer, Format)] -> Doc
-formatsToCheckers formats =
-  vcat $ map formatToChecker formats
-
-formatToChecker :: (Integer, Format) -> CheckerDeclaration
-formatToChecker format =
-  "todo"
-
--- void check_4(DataStruct_4 in, DataStruct_4 out) {
---     assert in.field1 == out.field1;
---     assert in.field3 == out.field3;
--- }
-
+genCheckers :: [(Integer, Format)] -> Doc
+genCheckers formats =
+  vcat $ map (formatToChecker (last formats)) formats
+    where
+      formatToChecker :: (Integer, Format) -> (Integer, Format) -> Doc
+      formatToChecker (lastIndex, lastFormat) (index, format) =
+        block (formatToCheckerHeader lastIndex index)
+              (formatToCheckerBody lastFormat format)
+      formatToCheckerHeader :: Integer -> Integer -> Doc
+      formatToCheckerHeader lastIndex index =
+        "void check_" <> integer index <>
+                      argslist [ dataStructVariable index <+> "in"
+                               , dataStructVariable lastIndex <+> "out"
+                               ]
+      formatToCheckerBody :: Format -> Format -> Doc
+      formatToCheckerBody lastFormat format =
+        vcat $ map (fieldToAssert format) lastFormat
+      fieldToAssert :: Format -> (Field, RenderStrategy) -> Doc
+      fieldToAssert format field =
+        -- Test if the format contains this field name belonging to the final format.
+        if (field `elem` format)
+        then "assert in." <> fieldAttribute field <+> "==" <+>
+                            "out." <> fieldAttribute field <> semi
+        else "assert out."<> fieldAttribute field <+> "==" <+> "-1" <> semi
 
 -- Total cost declaration
 
 totalCostDeclaration :: Doc
-totalCostDeclaration = text "int totalCost = 0;"
+totalCostDeclaration = "int totalCost = 0;"
 
 
 -- Generator bit check()
@@ -115,73 +142,110 @@ generatorCheck =
 -- Generator int readExp()
 
 generatorReadExp :: Doc
-generatorReadExp = 
+generatorReadExp =
   "generator int readExp() {} //TODO, but it's static content"
 
 
--- Read function -- only need the lastmost format's!
-
--- DataStruct_4 read(int[fileSize] buf, int length) {
---     DataStruct_4 result = new DataStruct_4();
---     result.field1 = readExp(buf, length, 2);
---     result.field3 = readExp(buf, length, 2);    
---     return result;
--- }
+-- Read function -- only need the lastmost format's read function!
 
 formatToReader :: (Integer, Format) -> Doc
-formatToReader (index, format) =
-  block (readerHeader index)
-        (readerBody index format)
+formatToReader (index, format) = block readerHeader readerBody
+  where readerHeader :: Doc
+        readerHeader =
+          dataStructVariable index <+> "read" <>
+          argslist ["int[fileSize] buf", "int length"]
 
-readerHeader :: Integer -> Doc
-readerHeader index = 
-  "DataStruct_" <> integer index <+> "read" <> 
-                  (argslist ["int[fileSize] buf", "int length"])
-
-readerBody :: Integer -> Format -> Doc
-readerBody index format =
-  "DataStruct_" <> integer index <+> "result = new DataStruct_" <> integer index <> "();" $$ vcat (map readerBodyResult format) $$ "return result;"
+        readerBody :: Doc
+        readerBody =
+          dataStructVariable index <+> "result = new" <+> dataStructVariable index <>
+          "();" $$ vcat (map readerBodyResult format) $$ "return result;"
 
 readerBodyResult :: (Field, RenderStrategy) -> Doc
 readerBodyResult (IntField fieldName, _) = "result.field" <> (int fieldName) <+> "= readExp(buf, length, 2);"
 
+
 -- Harness void main()
 
-formatsToHarnessMain :: [Format] -> Doc
-formatsToHarnessMain formats =
-  block (formatsToHarnessMainHeader formats)
-          (formatsToHarnessMainBody formats)
+genHarnessMain :: [(Integer, Format)] -> Doc
+genHarnessMain formats = block genHarnessMainHeader
+                               (genHarnessMainBody formats)
+  where genHarnessMainHeader :: Doc
+        genHarnessMainHeader =
+          "harness void main" <> argslist ((argsFromFormats formats)
+                                           ++ (bufsFromFormats formats))
 
-formatsToHarnessMainHeader :: [Format] -> Doc
-formatsToHarnessMainHeader formats =
-  "harness void main()"
+argsFromFormats :: [(Integer, Format)] -> [Doc]
+argsFromFormats formats =
+  concatMap argsFromFormat formats
+  where argsFromFormat :: (Integer, Format) -> [Doc]
+        argsFromFormat (index, format) =
+          map (argFromField index) format
 
-formatsToHarnessMainBody :: [Format] -> Doc
-formatsToHarnessMainBody formats =
-  "int length;"
+argFromField :: Integer -> (Field, RenderStrategy) -> Doc
+argFromField index (IntField fieldName, _) =
+  "int" <+> "field" <> int fieldName <> "_" <> integer index
+  -- Note: This function is used in more than one place!
 
+bufsFromFormats :: [(Integer, Format)] -> [Doc]
+bufsFromFormats formats =
+  map bufFromFormat formats
 
+bufFromFormat :: (Integer, Format) -> Doc
+bufFromFormat (index, _) =
+  "int[fileSize]" <+> "buf" <> integer index
 
--- harness void main(int field1, int field2, int field3,
---                   int[fileSize] buf1, int[fileSize] buf2, int[fileSize] buf3, int[fileSize] buf4) {
---     int length;
---     DataStruct_1 in1 = new DataStruct_1(field1=field1);
---     DataStruct_2 in2 = new DataStruct_2(field1=field1, field2=field2);
---     DataStruct_3 in3 = new DataStruct_3(field1=field1, field2=field2, field3=field3);
---     DataStruct_4 in4 = new DataStruct_4(field1=field1, field3=field3);
+genHarnessMainBody :: [(Integer, Format)] -> Doc
+genHarnessMainBody formats =
+  vcat [ "int length;"
+       , genMainStructDecls formats
+       , genMainWriteChecks formats
+       , "minimize(totalCost);"
+       ]
+
+genMainStructDecls :: [(Integer, Format)] -> Doc
+--     DataStruct_2 in2 = new DataStruct_2(field1=field1_2, field2=field2_2);
+genMainStructDecls formats =
+  vcat $ map genMainStructDecl formats
+
+genMainStructDecl :: (Integer, Format) -> Doc
+genMainStructDecl (index, format) =
+   dataStructVariable index <+> "in" <> integer index
+                  <+> equals <+> "new" <+> dataStructVariable index
+                  <> argslist (structDeclArgs index format) <> semi
+
+structDeclArgs :: Integer -> Format -> [Doc]
+structDeclArgs index format =
+  map (structDeclArg index) format
+
+structDeclArg :: Integer -> (Field, RenderStrategy) -> Doc
+  -- field1=field1_2. note that '2' is the index
+structDeclArg index (IntField fieldName, _) =
+  "field" <> int fieldName <> equals <> "field" <> int fieldName <>
+  "_" <> integer index
+
+genMainWriteChecks :: [(Integer, Format)] -> Doc
 --     write_1(in1, length, buf1);
 --     check_1(in1, read(buf1, length));
---     write_2(in2, length, buf2);
---     check_2(in2, read(buf2, length));
---     write_3(in3, length, buf3);
---     check_3(in3, read(buf3, length));
---     write_4(in4, length, buf4);
---     check_4(in4, read(buf4, length));
---     minimize(totalCost);
--- }
+genMainWriteChecks formats =
+  vcat $ map genMainWriteCheck formats
 
+genMainWriteCheck :: (Integer, Format) -> Doc
+genMainWriteCheck (index, _) =
+  vcat [ "write_" <> integer index <> argslist
+                    ["in1","length", "buf1"] <> semi
+       , "check_" <> integer index <> argslist
+                    ["in1", "read" <> argslist ["buf1", "length"]]
+                    <> semi
+       ]
 
 -- Helper functions
+
+fieldAttribute :: (Field, RenderStrategy) -> Doc
+fieldAttribute (IntField fieldName, _) =
+  "field" <> int fieldName
+
+dataStructVariable :: Integer -> Doc
+dataStructVariable index = "DataStruct_" <> integer index
 
 argslist :: [Doc] -> Doc
 argslist args =
