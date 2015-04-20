@@ -1,7 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Data.SketchFileFormat.Format
+module GenSketch.GenSketch
+  (
+    sketchFormats
+  ) where
+
 import Text.PrettyPrint
+
+import GenSketch.Data.SketchFileFormat.Format
 
 -- data Struct = Struct
 -- data ReadFunc = ReadFunc
@@ -12,10 +18,13 @@ import Text.PrettyPrint
 -- instance GenSketch Struct where
 --  gen _ formats = vcat $ map formatToStruct formats
 
-main :: IO ()
-main = do
-  x <- fmap lines getContents
-  putStrLn $ render $ formatsToSketch $ stringToFormats $ head x
+--main :: IO ()
+--main = do
+--  x <- fmap lines getContents
+--  putStrLn $ render $ formatsToSketch $ stringToFormats $ head x
+
+sketchFormats :: [Format] -> String
+sketchFormats = show . formatsToSketch
 
 formatsToSketch :: [Format] -> Doc
 formatsToSketch formats =

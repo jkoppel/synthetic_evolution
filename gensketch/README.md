@@ -1,0 +1,1 @@
+Must have SKETCH_HOME set to the location of Sketch
