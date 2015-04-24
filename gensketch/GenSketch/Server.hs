@@ -11,6 +11,7 @@ import Data.List (intercalate)
 import Data.Tree
 
 import Snap.Core
+import Snap.Extras.CoreUtils
 import Snap.Http.Server
 import Snap.Util.FileServe
 
@@ -28,7 +29,9 @@ write :: (Show a, MonadSnap m) => a -> m ()
 write = writeBS . BC.pack . show
 
 writeFormats :: (MonadSnap m) => m ()
-writeFormats = write $ encodeJSON formatHistories
+writeFormats = do
+  jsonResponse
+  writeBS $ BC.pack $ encodeJSON formatHistories
 
 pathToHistory :: Forest Format -> [Format] -> [Int] -> [Format]
 pathToHistory _      prevs [] = prevs
