@@ -6,15 +6,28 @@ module GenSketch.GenFormat (
 
 import Data.Tree
 
+import Text.Printf
+
 import GenSketch.Data.SketchFileFormat.Format
 
-addField :: [Format] -> Format -> [Format]
+--------------------------------------------------------------------------------
+
+addField :: [Format] -> Format -> [ChangedFormat]
 addField prevFormats format = do
     let maxFieldHistorical = foldl max 0 (map maxField prevFormats)
     strat <- [AttributeCode Raw, Raw]
-    inserts [] (IntField (maxFieldHistorical+1), strat) format
+    let field = (IntField (maxFieldHistorical+1), strat)
+    let nam   = prettyField (fst field)
+    (pos, fmt) <- zip [0..] $ inserts [] field format
+    return $ ChangedFormat { changeDesc = printf "Insert %s at %d" nam (pos :: Int) ++ renderStrat field
+                           , newFormat  = fmt
+                           }
     
   where
+    renderStrat :: (Field,RenderStrategy) -> String
+    renderStrat (f@(IntField n), (AttributeCode s)) = (printf " with prefix %d" n) ++ renderStrat (f,s)
+    renderStrat (_,              Raw)               = ""
+
     maxField :: Format -> FieldName
     maxField = foldl max 0 . map (fieldName.fst)
 
@@ -25,18 +38,20 @@ addField prevFormats format = do
     inserts before x [] = [before ++ [x]]
     inserts before x (r:rest) = [before ++ [x] ++ (r:rest)] ++ inserts (before++[r]) x rest
 
-removeField :: a -> Format -> [Format]
+removeField :: a -> Format -> [ChangedFormat]
 removeField _ format = do
     pos <- [0..(length format - 1)]
-    return $ take pos format ++ drop (pos+1) format
+    return $ ChangedFormat { changeDesc = printf "Remove %s" (prettyFormatField format pos)
+                           , newFormat = take pos format ++ drop (pos+1) format
+                           }
 
 data FormatState = FormatState {
     height  :: Int
-  , cur     :: Format
+  , cur     :: ChangedFormat
   , history :: [Format]
   }
 
-nextLayerFormatHistories :: FormatState -> (Format, [FormatState])
+nextLayerFormatHistories :: FormatState -> (ChangedFormat, [FormatState])
 nextLayerFormatHistories st
     | height st == 0 = (cur st, [])
     | otherwise      = (cur st, nextLayerStates)
@@ -44,18 +59,18 @@ nextLayerFormatHistories st
          nextLayerStates = do
            nextFn <- [addField, removeField]
            let prevs = history st
-           next   <- nextFn prevs (cur st)
+           next   <- nextFn prevs (newFormat $ cur st)
            return $ FormatState {
                       height  = (height st) - 1
                     , cur     = next
-                    , history = prevs ++ [next]
+                    , history = prevs ++ [newFormat next]
                     }
   
-formatHistories :: Forest Format
+formatHistories :: Forest ChangedFormat
 formatHistories = subForest $ unfoldTree nextLayerFormatHistories startState
   where
     startState = FormatState {
                    height  = 3
-                 , cur     = []
+                 , cur     = ChangedFormat {changeDesc="", newFormat=[]}
                  , history = [[]]
                  }

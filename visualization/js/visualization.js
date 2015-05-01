@@ -61,6 +61,7 @@ function makeRect(sel) {
                .call(translate(0, heightFn));
 
 
+
     g.append("rect")
      .attr("class", "format-rect")
      .attr("height", height)
@@ -79,7 +80,7 @@ function makeRect(sel) {
 
         //d.selected = true;
         path.push(i);
-        formatHistory.push(cursor[i].rootLabel);
+        formatHistory.push(cursor[i].rootLabel.newFormat);
         cursor = cursor[i].subForest;
         fetchCode();
         draw();
@@ -89,7 +90,7 @@ function makeRect(sel) {
     g.append("text")
      .attr("y", 10)
      .text(function (d) {
-        return JSON.stringify(d.rootLabel);
+        return d.rootLabel.changeDesc;
      });
 
 }

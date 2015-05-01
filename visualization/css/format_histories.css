@@ -1,3 +1,8 @@
 .format-rect {
 	fill: rgb(0,0, 255);
 }
+
+
+.field-rect {
+	stroke: black;
+}

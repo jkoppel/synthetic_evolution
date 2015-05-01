@@ -65,7 +65,7 @@ sketchFormat = do
   case pathStrOpt of
     Nothing -> return ()
     Just pathStr -> do let path = read (BC.unpack pathStr) :: [Int]
-                       let history = pathToHistory formatHistories [] path
+                       let history = pathToHistory (map (fmap newFormat) formatHistories) [] path
                        result <- liftIO $ sketch history
                        write result
 
