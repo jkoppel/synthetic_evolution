@@ -31,28 +31,6 @@ function fetchCode() {
     });
 }
 
-function val(x, d, i) {
-    if (typeof(x) == "function") {
-        return x(d, i);
-    } else {
-        return x;
-    }
-}
-
-function getter(s) {
-    return function(d) {
-        return d[s];
-    };
-}
-
-function translate(x, y) {
-    return function(sel) {
-        sel.attr("transform", function (d, i) {
-            return "translate(" + val(x,d,i) + "," + val(y,d,i) + ")";
-        });
-    }
-}
-
 function makeRect(sel) {
 
     var heightFn = function(d,i) {return i*(height+padding);};
@@ -97,106 +75,6 @@ function makeRect(sel) {
 
 
 
-function attributeCodeField(field) {
-
-}
-
-function fileField(outerField) {
-    var fieldID = outerField[0];
-
-    var height = 30;
-    var unitWidth = 20;
-
-    function fieldColor() {
-        switch (fieldID) {
-            case 1: return "green";
-            case 2: return "blue";
-            case 3: return "yellow";
-        }
-    }
-
-    function rawField(field) {
-        function fieldName() {
-            return "field" + fieldID;
-        }
-
-        function my (sel) {
-            var g = sel.append("g");
-
-            g.append("rect")
-             .style("fill", fieldColor())
-             .attr("width", unitWidth*my.len())
-             .attr("height", height)
-             .attr("class", "field-rect");
-
-            g.append("text")
-             .text(fieldName())
-             .style("text-anchor", "middle")
-             .attr("x", unitWidth*my.len() / 2)
-             .attr("y", (height/2)+5);
-
-            return g;
-        }
-
-        my.width = function() {
-            return my.len() * unitWidth;
-        };
-
-
-        my.len = function() {
-            return 4;
-        }
-
-        return my;
-    }
-
-    function attributeCodeField(field) {
-        var innerField = fileField([field[0], field[1].AttributeCode]);
-
-        var attributeCodeLength = 4;
-
-        function my (sel) {
-
-            var g = sel.append("g");
-
-            g.append("rect")
-             .style("fill", fieldColor())
-             .attr("width", unitWidth * attributeCodeLength)
-             .attr("height", height)
-             .attr("class", "field-rect");
-
-            g.append("text")
-             .text("" + fieldID)
-             .style("text-anchor", "middle")
-             .attr("x", unitWidth * attributeCodeLength / 2)
-             .attr("y", (height/2)+5);
-
-            var innerG = g.append("g")
-                          .call(translate(my.width() - innerField.width(), 0));
-
-            innerField(innerG);
-
-            return g;
-        }
-
-        my.len = function() {
-            return attributeCodeLength + innerField.len();
-        };
-
-        my.width = function() {
-            return my.len() * unitWidth;
-        };
-
-        return my;
-    }
-
-    if (outerField[1] == "Raw") {
-        return rawField(outerField);
-    } else {
-        return attributeCodeField(outerField);
-    }
-}
-
 function draw() {
     d3.select("svg").remove();
 
@@ -223,15 +101,5 @@ function draw() {
 
     makeRect(sel);
 
-    var y = 20;
-
-    formatHistory.forEach(function(curFormat) {
-        var x = 100;
-        curFormat.forEach(function (f) {
-            var fld = fileField(f);
-            fld(d3.select("svg")).call(translate(x, y));
-            x += fld.width();
-        });
-        y += 50;
-    });
+    drawFormat.fileHistory(formatHistory)(d3.select("svg")).call(translate(20, 100));
 }
