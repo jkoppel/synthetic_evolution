@@ -5,101 +5,107 @@ var editor = CodeMirror.fromTextArea(document.getElementById("generated-code"), 
  });
 
 var data = [];
-var cursor = {};
 
 d3.json("../getsketches/", function (result) {
-  //data = {rootLabel: [], subForest: result};
   data = result;
-  cursor = data;
+  preprocess(data);
   draw();
 });
 
-var svgWidth = 1000;
-var svgHeight = 800;
-
-var height = 50;
-var padding = 10;
-var width = 50;
-
-var cursor = [];
-var path = [];
-var formatHistory = [];
-
-function fetchCode() {
-    d3.text("../sketch/" + JSON.stringify(path), function (code) {
+function fetchCode(selected) {
+    d3.text("../sketch/" + JSON.stringify(selected.path), function (code) {
         editor.setValue(JSON.parse(code));
     });
 }
 
-function makeRect(sel) {
+function preprocess(forest, parent, path) {
+    if (!path) {
+        path = [];
+    }
 
-    var heightFn = function(d,i) {return i*(height+padding);};
+    forest.forEach(function (d, i) {
+      var p = path.concat([i]);
 
-    var g = sel.append("g")
-               .call(translate(0, heightFn));
+      d.selected = false;
+      d.parent = parent;
+      d.path = p;
+
+      if (parent) {
+        d.formatHistory = parent.formatHistory.concat([d.rootLabel.newFormat]);
+      } else {
+        d.formatHistory = [d.rootLabel.newFormat];
+      }
+
+      preprocess(d.subForest, d, p);
+    });
+}
+
+function makeRects(sel, arr) {
+    sel.selectAll("div")
+       .data(arr)
+       .enter()
+       .append("div")
+       .text(function(d) {return d.rootLabel.changeDesc;})
+       .classed("format-button", true)
+       .on("mouseover", function (d) {
+          d3.select(this)
+            .style("background-color", "#303030")
+       })
+       .on("mouseout", function (d) {
+          if (!d.selected) {
+              d3.select(this)
+                .style("background-color", "#404040");
+          }
+       }).on("click", function (d) {
+          select(this, d);
+       })
+       .attr("target_height", function(d) { 
+          d.target_height = this.getBoundingClientRect().height;
+          return d.target_height;
+       })
+       .style("height", "0px")
+       .transition(3000)
+       .style("height", function (d) {
+         return d.target_height + "px";
+       })
+       .transition()
+       .style("height", null);
+}
+
+function drawFormatHistory(formatHistory) {
+    var canvas = d3.select("#format-history-canvas");
+    canvas.selectAll("*").remove();
+    drawFormat.fileHistory(formatHistory)(canvas);
+}
+
+function select(node, d) {
+    d3.event.stopPropagation();
+
+    fetchCode(d);
+    preprocess(data);
+
+    for(var x = d; x; x = x.parent) {
+        x.selected = true;
+    }
+
+    drawFormatHistory(d.formatHistory);
+
+    makeRects(d3.select(node), d.subForest);
 
 
+    d3.select("#format-histories")
+      .selectAll("div")
+      .filter(function (d) { return !d.selected && d.parent && !d.parent.selected; })
+      .transition(3000)
+      .style("height", "0px")
+      .remove();
 
-    g.append("rect")
-     .attr("class", "format-rect")
-     .attr("height", height)
-     .attr("width", width)
-     .on("mouseover", function(d) {
-         d3.select(this).style("fill", "red");
-     })
-     .on("mouseout", function(d) {
-         d3.select(this).style("fill", "blue");
-     })
-     .on("click", function(d, i) {
-
-        /*if (d.parent) {
-            d.parent.subForest.forEach(function (e) { e.selected = false; })
-        }*/
-
-        //d.selected = true;
-        path.push(i);
-        formatHistory.push(cursor[i].rootLabel.newFormat);
-        cursor = cursor[i].subForest;
-        fetchCode();
-        draw();
-     });
-     
-
-    g.append("text")
-     .attr("y", 10)
-     .text(function (d) {
-        return d.rootLabel.changeDesc;
-     });
-
+    d3.select("#format-histories")
+      .selectAll("div")
+      .classed("selected", function(d) {return d.selected;});
 }
 
 
-
 function draw() {
-    d3.select("svg").remove();
-
-    /*var treeLayout = d3.layout.tree()
-                              .size([svgWidth / 2, svgHeight / 2])
-                              .children(function (d) {
-                                if (d.selected) {
-                                    return d.subForest;
-                                } else {
-                                    return null;
-                                }
-                               });
-
-    var nodes = treeLayout.nodes(data);*/
-
-    var svg = d3.select("#format-histories")
-                .append("svg")
-                .attr("width", svgWidth)
-                .attr("height", svgHeight);
-
-    var sel = svg.selectAll("rect")
-        .data(cursor)
-        .enter();
-
-    makeRect(sel);
-
-    drawFormat.fileHistory(formatHistory)(d3.select("svg")).call(translate(20, 100));
+   makeRects(d3.select("#format-histories"), data);
 }
