@@ -1,0 +1,44 @@
+body {
+	background-image: url("../img/light_grey.png");
+}
+
+#format-histories {
+	float: left;
+	margin-right: 100px;
+}
+
+.format-rect {
+	fill: rgb(0,0, 255);
+}
+
+
+.field-rect {
+	stroke: black;
+}
+
+.format-button {
+	border-style: solid;
+	border-width: 1px;
+	border-color: black;
+	background-color: #404040;
+	width: 200px;
+}
+
+.selected {
+	border-width: 2px;
+/*	background-color: #202020;*/
+	background-color: yellow;
+}
+
+.selected div {
+	margin-left: 20px;
+}
+
+.CodeMirror {
+	height: auto;
+}
+
+#format-history-canvas {
+	width: 500px;
+	height: 200px;
+}
