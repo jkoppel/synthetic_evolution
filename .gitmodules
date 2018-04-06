@@ -1,0 +1,3 @@
+[submodule "visualization/lib/CodeMirror"]
+	path = visualization/lib/CodeMirror
+	url = https://github.com/codemirror/CodeMirror.git
