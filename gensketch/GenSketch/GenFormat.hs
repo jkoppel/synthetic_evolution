@@ -70,7 +70,7 @@ formatHistories :: Forest ChangedFormat
 formatHistories = subForest $ unfoldTree nextLayerFormatHistories startState
   where
     startState = FormatState {
-                   height  = 3
+                   height  = 4
                  , cur     = ChangedFormat {changeDesc="", newFormat=[]}
                  , history = [[]]
                  }

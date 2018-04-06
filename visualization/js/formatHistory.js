@@ -9,9 +9,10 @@ drawFormat.fileField = function(outerField) {
 
     function fieldColor() {
         switch (fieldID) {
-            case 1: return "green";
-            case 2: return "blue";
-            case 3: return "yellow";
+            case 1: return "#277552";
+            case 2: return "#29516D";
+            case 3: return "#AA7939";
+            case 4: return "#AA5739";
         }
     }
 

@@ -11,7 +11,6 @@ import Data.List (intercalate)
 import Data.Tree
 
 import Snap.Core
-import Snap.Extras.CoreUtils
 import Snap.Http.Server
 import Snap.Util.FileServe
 
@@ -24,6 +23,11 @@ import Text.JSON.Generic
 import GenSketch.Data.SketchFileFormat.Format
 import GenSketch.GenFormat
 import GenSketch.GenSketch
+
+
+-- | Mark response as 'application/json'
+jsonResponse :: MonadSnap m => m ()
+jsonResponse = modifyResponse $ setHeader "Content-Type" "application/json"
 
 write :: (Show a, MonadSnap m) => a -> m ()
 write = writeBS . BC.pack . show
@@ -77,4 +81,5 @@ routes = dir "static" (serveDirectory "../visualization")
 
 main :: IO ()
 main = do
+  putStrLn "Starting"
   quickHttpServe routes
