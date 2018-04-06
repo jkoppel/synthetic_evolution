@@ -1,0 +1,109 @@
+// Intermediate draft of the sketch for variable-length fields.
+// This successfully sketches code for a fixed-length array.
+
+int MAXFIELDSIZE = 2; //for how long variable-length fields are
+                      //allowed to be
+
+int DEPTH = 3; //for how deep readExp should go
+
+struct DataStruct_4 {
+    int field1;
+    int field3Size;
+    int[MAXFIELDSIZE] field3;
+}
+
+int fileSize = 8;
+
+void write_4(DataStruct_4 s, ref int length, ref int[fileSize] buf) {
+    buf[0] = 1;
+    buf[1] = s.field1;
+    buf[2] = 3;
+    buf[3] = s.field3Size;
+    int i = 0;
+    while(i < MAXFIELDSIZE) {
+        buf[4+i] = s.field3[i];
+        i += 1;
+    }
+    length = 6 + MAXFIELDSIZE;
+}
+
+
+void check_4(DataStruct_4 in, DataStruct_4 out) {
+    assert in.field1 == out.field1;
+    assert in.field3Size == out.field3Size;
+    int i = 0;
+    while (i < MAXFIELDSIZE) {
+        assert in.field3[i] == out.field3[i];
+        i += 1;
+    }
+}
+
+int totalCost = 0;
+
+generator bit check(int[fileSize] buf, int length, int depth) {
+    assert depth > 0;
+  
+    int t = ??;
+
+    if (t == 0) {
+        return true;
+    } else if (t == 1) {
+        totalCost += 1;
+        return buf[??] == ??;
+    } else if(t == 2) {
+        totalCost += 1;
+        return {| length (< | == | >) ?? |};
+    } else {
+        bit IUsedAnAnd = check(buf, length, depth-1) &&
+                         check(buf, length, depth-1);
+        return IUsedAnAnd;
+    }
+}
+
+generator int readExp(int[fileSize] buf, int length, int depth) {
+    if (?? || depth == 0) {
+        return -1;
+    }
+    if (check(buf, length, 2)) {
+        return buf[??];
+    } else {
+        return readExp(buf, length, depth-1);
+    }
+}
+
+generator int readExpWithI(int[fileSize] buf, int length, int depth, int i) {
+    if (?? || depth == 0) {
+        return -1;
+    }
+    if (check(buf, length, 2)) {
+        return buf[i + ??];
+    } else {
+        return readExp(buf, length, depth-1);
+    }
+}
+
+
+DataStruct_4 read(int[fileSize] buf, int length) {
+    DataStruct_4 result = new DataStruct_4();
+    result.field1 = readExp(buf, length, DEPTH);
+    result.field3Size = readExp(buf, length, DEPTH);
+    int i = 0;
+    while (i < MAXFIELDSIZE) {
+        result.field3[i] = readExpWithI(buf, length, DEPTH, i);
+        i += 1;
+    }
+    return result;
+}
+
+
+harness void main(int field1,
+                  int[MAXFIELDSIZE] field3,
+                  int[fileSize] buf4) {
+    int length;
+    DataStruct_4 in4 = new DataStruct_4(field1=field1,
+                                        field3=field3);
+    write_4(in4, length, buf4);
+    check_4(in4, read(buf4, length));    
+
+    minimize(totalCost);
+}
